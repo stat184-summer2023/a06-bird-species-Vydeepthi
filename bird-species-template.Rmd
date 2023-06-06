@@ -1,7 +1,7 @@
 ---
 title: "Activity: Bird Species"
-author: "Your Names Here"
-date: "DUE DATE "
+author: "Vydeepthi Dhulipalla"
+date: "June 7,2023 "
 output: html_notebook
 ---
 
@@ -11,17 +11,17 @@ output: html_notebook
 ```{r}
 # Load `tidyverse` and `dcData` packages
 
-
-
+library(tidyverse)
+library(dcData)
 
 # Load the `OrdwayBirds` data set into your RStudio environment from the `dcData` package
 
-
-
+data(OrdwayBirds, package = "dcData")
 
 # Show a few commands used to inspect the data set a few different ways
 
-
+glimpse(OrdwayBirds)
+View(OrdwayBirds)
 
 ```
 
@@ -35,11 +35,14 @@ Before we begin, the book gives us some instructions to select a few key variabl
 
 ```{r}
 # Get the data table & clean up dates (see Data Computing eBook)
-
-
+OrdwayBirds_cleaned <- OrdwayBirds %>%
+  mutate(
+    Month = as.numeric(Month),
+    Day = as.numeric(Day)
+  )
 
 # Inspect resulting data
-
+head(OrdwayBirds_cleaned)
 
 ```
 
@@ -53,10 +56,18 @@ Before we begin, the book gives us some instructions to select a few key variabl
 ```{r}
 # unique species in original data (including mis-spellings)
 
+unique_species_original <- unique(OrdwayBirds$SpeciesName)
+
+# Print unique species in original data
+unique_species_original
+
 
 
 # unique species in the clean list
+unique_species_cleaned <- unique(OrdwayBirds_cleaned$SpeciesName)
 
+# Print unique species in the clean list
+unique_species_cleaned
 
 
 ```
@@ -68,15 +79,14 @@ Before we begin, the book gives us some instructions to select a few key variabl
 
 
 ```{r}
-# inspect OrdwaySpeciesNames
+# Inspect OrdwaySpeciesNames data
+View(OrdwaySpeciesNames)
 
+# Inner join
+joined_data <- inner_join(OrdwayBirds_cleaned, OrdwaySpeciesNames, by = "SpeciesName")
 
-# inner join
-
-
-
-
-# inspect the data after the join
+# Inspect the data after the join
+View(joined_data)
 
 
 ```
@@ -87,19 +97,22 @@ Before we begin, the book gives us some instructions to select a few key variabl
 We want to identify the top 5-6 bird species sighted at the Katherine Ordway Natural History Study Area.
 
 ```{r}
-# count sightings by species in descending order
+# Count sightings by species
+species_counts <- table(OrdwayBirds_cleaned$SpeciesName)
 
+# Sort species counts in descending order
+sorted_species <- sort(species_counts, decreasing = TRUE)
 
+# Display the top 10 species
+top_species <- head(sorted_species, n = 10)
+top_species
 
+# Define a threshold for major species (e.g., top 5 or 6)
+threshold <- 5
 
-# a hint in the text book recommends displaying the top 10 species to choose our threshold
-
-
-
-# define a sightings threshold; produce a table with only birds belonging to major species
-
-
-
+# Create a table with major species only
+major_species <- subset(OrdwayBirds_cleaned, SpeciesName %in% names(top_species)[1:threshold])
+major_species
 
 ```
 
@@ -109,7 +122,13 @@ We want to identify the top 5-6 bird species sighted at the Katherine Ordway Nat
 We now want to produce a month-by-month count for each of the major species, and then construct a chart to tell the story of what time of year the various species appear.
 
 ```{r}
-# prepare glyph-ready data table called `ByMonth`
+# Prepare glyph-ready data table called `ByMonth`
+ByMonth <- major_species %>%
+  group_by(Month, SpeciesName) %>%
+  summarise(Count = n())
+
+# View the `ByMonth` data table
+head(ByMonth)
 
 
 
@@ -123,10 +142,10 @@ Now use the ggplot template below to generate the desired graph. (Remark you can
 # ggplot commands
 
 ByMonth %>% 
-  ggplot(aes(x = Month, y = count, color = Species)) + 
+  ggplot(aes(x = Month, y = Count, color = SpeciesName)) + 
   geom_line()
 
-ByMonth %>% ggplot(aes(x=Month,y=count ,fill=Species)) +
+ByMonth %>% ggplot(aes(x=Month,y=Count ,fill=SpeciesName)) +
   geom_bar(stat='identity',position='stack', width=.9) 
 
 ```
@@ -134,17 +153,24 @@ ByMonth %>% ggplot(aes(x=Month,y=count ,fill=Species)) +
 According to the graph, we can answer the questions posed:
 
 ##### 1. Which species are present year-round?  
-
+*Black-capped Chickadee is the species that is present year-round*
 
 
 ##### 2. Which species are migratory, that is, primarily present in one or two seasons?
 
-
+*Tree-sparrow, Robin and Slate-colored Junco are primarily present in one or two seasons*
 
 
 ##### 3. What is the peak month for each major species? (bullet list)
 
-
+```{r}
+cat("Peak month for each major species:\n")
+cat("* American Goldfinch-October\n")
+cat("* Black-capped Chickadee-November\n")
+cat("* Robin-May\n")
+cat("* Slate-colored Junco-October\n")
+cat("* Tree Sparro-March\n")
+```
 
 
 ##### 4. Which major species are seen in good numbers for at least 6 months of the year?
@@ -152,6 +178,15 @@ According to the graph, we can answer the questions posed:
 
 
 ```{r}
+# Find major species seen in good numbers for at least 6 months
+six_month_species <- ByMonth %>%
+  group_by(SpeciesName) %>%
+  filter(n_distinct(Month) >= 6) %>%
+  distinct(SpeciesName)
+
+# Print the major species seen in good numbers for at least 6 months
+cat("Major species seen in good numbers for at least 6 months:\n")
+cat(paste("* ", six_month_species$SpeciesName, "\n", sep = ""))
 
 ```
 
